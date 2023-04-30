@@ -1,0 +1,73 @@
+#! /usr/bin/env python3.11
+
+import re
+
+
+def get_filepath() -> str:
+    filepath = input("Enter filepath for the log file you want to parse: ")
+    return filepath
+
+
+def get_prompt() -> list:
+    prompts = input("Enter one or more prompts separated by commas (e.g. XIMSS,CALLLEG): ")
+    return prompts.split(',')
+
+
+def find_logs(prompts: list, filepath: str) -> dict:
+    found_entries = {}
+    with open(filepath, 'r', encoding='utf8') as log:
+        for line in log:
+            for prompt in prompts:
+                if re.search(prompt, line):
+                    if prompt not in found_entries:
+                        found_entries[prompt] = []
+                    found_entries[prompt].append(line)
+        
+        total_found_entries = sum([len(entries) for entries in found_entries.values()])
+
+        print(f'Found {total_found_entries} entries for {", ".join(prompts)}!')
+        return found_entries
+
+
+def split_write(found_entries: dict) -> None:
+    for i in range(2):
+        numbers = input(f"Enter the code for the {', '.join(found_entries.keys())} entries you want to save (e.g. XIMISS-000003 or CALLLEG-000022): ")
+        patterns = [prompt + "-" + numbers for prompt in found_entries.keys()]
+        with open(f"{i+1}.txt", "w+", encoding='utf8') as file:
+            for prompt, lines in found_entries.items():
+                for entry in lines:
+                    for pattern in patterns:
+                        if re.search(pattern, entry):
+                            file.write(entry)
+            for pattern in patterns:
+                if not any(re.search(pattern, entry) for prompt, lines in found_entries.items() for entry in lines):
+                    print(f"Could not locate {pattern} in log file!")
+    print("Done!")
+
+
+def save_found_logs(found_entries: dict) -> None:
+    choice = input("Do you want to split the entries into separate files? (yes/no): ")
+    if choice == "yes":
+        split_write(found_entries)
+    else:
+        numbers = input(f"What code do you want log entries with? (For example: 000003 for XIMSS or 000022 for CALLLEG): ")
+        patterns = [prompt + "-" + numbers for prompt in found_entries.keys()]
+        with open(f"{'-'.join(found_entries.keys())}.txt", "w+", encoding='utf8') as file:
+            for prompt, lines in found_entries.items():
+                for entry in lines:
+                    for pattern in patterns:
+                        if re.search(pattern, entry):
+                            file.write(entry)
+            for pattern in patterns:
+                if not any(re.search(pattern, entry) for prompt, lines in found_entries.items() for entry in lines):
+                    print(f"Could not locate {pattern} in log file!")
+            print("Done!")
+
+
+if __name__ == "__main__":
+    filepath = get_filepath()
+    prompts = get_prompt()
+
+    found_entries = find_logs(prompts, filepath)
+    save_found_logs(found_entries)
+
